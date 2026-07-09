@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KOLMAR | 데이터 입력 시트</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&amp;display=swap');
+  body { font-family: 'Noto Sans KR', system-ui, sans-serif; }
+  .data-table td, .data-table th { padding: 5px 8px; }
+  .data-table th { font-weight: 600; color: #334155; background-color: #f8fafc; }
+  .row-hover:hover { background-color: #f0f9ff; }
+  input[type="text"], input[type="number"] {
+    border: none; outline: none; background: transparent; width: 100%; padding: 3px 6px; font-size: 14px;
+  }
+  input[type="text"]:focus, input[type="number"]:focus {
+    outline: 2px solid #276EF1; outline-offset: -2px; background: white; border-radius: 4px;
+  }
+  @media (max-width: 640px) {
+    .data-table td, .data-table th { padding: 4px 6px; font-size: 13px; }
+    input[type="text"], input[type="number"] { font-size: 13px; padding: 2px 4px; }
+  }
+</style>
+</head>
+<body class="bg-slate-50">
+  <nav class="bg-[#276EF1] text-white shadow-lg">
+    <div class="max-w-screen-xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <div class="w-9 h-9 bg-white rounded-xl flex items-center justify-center shadow">
+          <span class="text-[#276EF1] font-black text-2xl tracking-tighter">K</span>
+        </div>
+        <div>
+          <div class="font-bold text-xl tracking-tight">KOLMAR</div>
+        </div>
+      </div>
+      <div class="text-xs text-blue-100">데이터 입력 시스템</div>
+    </div>
+  </nav>
+
+  <div class="max-w-screen-xl mx-auto px-4 py-4">
+    <div class="mb-3 p-3 bg-white rounded-2xl shadow-sm border border-slate-100 text-sm text-slate-600">
+      💡 컴퓨터에서 입력 후 CSV로 내보내서 핸드폰으로 공유하세요.
+    </div>
+
+    <!-- 툴바 -->
+    <div class="flex flex-wrap items-center gap-2 mb-3">
+      <button onclick="addRows(10)"
+              class="px-4 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-sm font-medium flex items-center gap-1.5 shadow-sm">
+        + 10행 추가
+      </button>
+     
+      <button onclick="init100Rows()"
+              class="px-4 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-sm font-medium flex items-center gap-1.5 shadow-sm">
+        100행 초기화
+      </button>
+      <button onclick="clearAllRows()"
+              class="px-4 py-2 bg-white hover:bg-red-50 border border-red-200 text-red-600 rounded-xl text-sm font-medium flex items-center gap-1.5 shadow-sm">
+        전체 초기화
+      </button>
+      <div class="flex-1"></div>
+
+      <button onclick="downloadTxtTemplate()"
+              class="px-4 py-2 bg-white border border-[#276EF1] text-[#276EF1] hover:bg-blue-50 rounded-xl text-sm font-semibold flex items-center gap-1.5 shadow-sm">
+        📋 업로드 양식
+      </button>
+
+      <button onclick="uploadTxtFile()"
+              class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold flex items-center gap-1.5 shadow-sm">
+        📤 텍스트 업로드
+      </button>
+
+      <!-- CSV 버튼을 초록 버튼과 비슷한 스타일로 수정 -->
+      <button onclick="exportToCSV()"
+              class="px-5 py-2 bg-[#276EF1] hover:bg-blue-700 text-white rounded-xl text-sm font-semibold flex items-center gap-2 shadow-sm">
+        📥 CSV 내보내기
+      </button>
+    </div>
+
+    <!-- 테이블 -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full data-table text-sm">
+          <thead class="sticky top-0 z-10">
+            <tr>
+              <th class="w-10 text-center">번호</th>
+              <th class="min-w-[200px]">항목</th>
+              <th class="w-16 text-center">1번 packing</th>
+              <th class="w-20 text-center">packing No.</th>
+              <th class="w-10"></th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="mt-2 text-xs text-slate-500 px-1 flex justify-between">
+      <div>총 행 수: <span id="rowCount" class="font-semibold text-slate-700">0</span>행</div>
+      <div>데이터는 기기별로 저장됩니다</div>
+    </div>
+  </div>
+
+  <script>
+    let rowIdCounter = 0;
+
+    function createRow(number, data = null) {
+      const tr = document.createElement('tr');
+      tr.className = 'row-hover border-b border-slate-100';
+      tr.dataset.rowId = ++rowIdCounter;
+
+      const itemVal = data ? data.item : '';
+      const checked = data ? data.checked : false;
+      const numVal = data ? data.num : '';
+
+      tr.innerHTML = `
+        <td class="text-center font-mono text-slate-500 text-xs">${number}</td>
+        <td><input type="text" value="${itemVal}" placeholder="항목"></td>
+        <td class="text-center"><input type="checkbox" ${checked ? 'checked' : ''} class="accent-[#276EF1] w-4 h-4"></td>
+        <td><input type="number" value="${numVal}" placeholder="0" class="text-center"></td>
+        <td class="text-center">
+          <button onclick="deleteRow(this)" class="text-red-400 hover:text-red-600 p-1 text-base">🗑️</button>
+        </td>
+      `;
+
+      const inputs = tr.querySelectorAll('input');
+      inputs.forEach(input => {
+        input.addEventListener('input', () => { saveToLocalStorage(); showSaveStatus(); });
+        input.addEventListener('change', () => { saveToLocalStorage(); showSaveStatus(); });
+      });
+      return tr;
+    }
+
+    function addRows(count) {
+      const tbody = document.getElementById('tableBody');
+      const current = tbody.querySelectorAll('tr').length;
+      for (let i = 0; i < count; i++) {
+        tbody.appendChild(createRow(current + i + 1));
+      }
+      updateRowCount();
+      saveToLocalStorage();
+    }
+
+    function init100Rows() {
+      if (!confirm('100행으로 초기화할까요?')) return;
+      const tbody = document.getElementById('tableBody');
+      tbody.innerHTML = '';
+      rowIdCounter = 0;
+      for (let i = 1; i <= 100; i++) tbody.appendChild(createRow(i));
+      updateRowCount();
+      saveToLocalStorage();
+    }
+
+    function deleteRow(btn) {
+      if (!confirm('삭제할까요?')) return;
+      btn.closest('tr').remove();
+      renumberRows();
+      updateRowCount();
+      saveToLocalStorage();
+    }
+
+    function renumberRows() {
+      document.querySelectorAll('#tableBody tr').forEach((row, i) => {
+        row.querySelector('td:first-child').textContent = i + 1;
+      });
+    }
+
+    function updateRowCount() {
+      document.getElementById('rowCount').textContent = document.getElementById('tableBody').querySelectorAll('tr').length;
+    }
+
+    function saveToLocalStorage() {
+      const rows = document.getElementById('tableBody').querySelectorAll('tr');
+      const data = [];
+      rows.forEach(row => {
+        const inputs = row.querySelectorAll('input');
+        data.push({
+          item: inputs[0].value,
+          checked: inputs[1].checked,
+          num: inputs[2].value
+        });
+      });
+      localStorage.setItem('kolmarSheetData', JSON.stringify(data));
+    }
+
+    function loadFromLocalStorage() {
+      const saved = localStorage.getItem('kolmarSheetData');
+      const tbody = document.getElementById('tableBody');
+      tbody.innerHTML = '';
+      rowIdCounter = 0;
+
+      if (saved) {
+        JSON.parse(saved).forEach((d, i) => tbody.appendChild(createRow(i + 1, d)));
+      } else {
+        for (let i = 1; i <= 50; i++) tbody.appendChild(createRow(i));
+      }
+      updateRowCount();
+    }
+
+    function clearAllRows() {
+      if (!confirm('전체 초기화할까요?')) return;
+      localStorage.removeItem('kolmarSheetData');
+      const tbody = document.getElementById('tableBody');
+      tbody.innerHTML = '';
+      rowIdCounter = 0;
+      for (let i = 1; i <= 50; i++) tbody.appendChild(createRow(i));
+      updateRowCount();
+    }
+
+    function downloadTxtTemplate() {
+      let content = "항목\n";
+      for (let i = 1; i <= 100; i++) {
+        content += "\n";
+      }
+      const blob = new Blob([content], { type: 'text/plain;charset=utf-8;' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'KOLMAR_업로드_양식.txt';
+      a.click();
+    }
+
+    function uploadTxtFile() {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.txt';
+      input.onchange = function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+          const text = ev.target.result;
+          parseTxtAndFill(text);
+        };
+        reader.readAsText(file, 'UTF-8');
+      };
+      input.click();
+    }
+
+    function parseTxtAndFill(text) {
+      const lines = text.trim().split(/\r?\n/);
+      if (lines.length < 2) {
+        alert("데이터가 없습니다.");
+        return;
+      }
+
+      const tbody = document.getElementById('tableBody');
+      tbody.innerHTML = '';
+      rowIdCounter = 0;
+
+      const max = Math.min(100, lines.length - 1);
+      for (let i = 1; i <= max; i++) {
+        const item = lines[i] ? lines[i].trim() : '';
+        tbody.appendChild(createRow(i, {
+          item: item,
+          checked: false,
+          num: ''
+        }));
+      }
+      updateRowCount();
+      saveToLocalStorage();
+    }
+
+    function exportToCSV() {
+      const rows = document.getElementById('tableBody').querySelectorAll('tr');
+      let csv = '\uFEFF번호,항목,1번 packing,packing No.\n';
+
+      rows.forEach(row => {
+        const inputs = row.querySelectorAll('input');
+        const no = row.querySelector('td:first-child').textContent;
+        const item = inputs[0].value.replace(/"/g, '""');
+        const packing = inputs[1].checked ? '1' : '';
+        const num = inputs[2].value;
+        csv += `${no},"${item}",${packing},${num}\n`;
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'kolmar_data.csv';
+      a.click();
+    }
+
+    function showSaveStatus() {}
+
+    function init() {
+      loadFromLocalStorage();
+    }
+
+    window.onload = init;
+  </script>
+</body>
+</html>

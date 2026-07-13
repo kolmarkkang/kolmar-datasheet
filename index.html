@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>샘플링 packing data sheet</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+<style>
+  body { font-family: system-ui, -apple-system, sans-serif; }
+  table { border-collapse: collapse; }
+  th, td { border: 1px solid #e5e7eb; }
+  .sticky-header th { position: sticky; top: 0; background: white; z-index: 10; }
+  
+  /* 핸드폰에서 배치번호가 잘 보이도록 */
+  @media (max-width: 640px) {
+    .batch-col {
+      min-width: 140px !important;
+    }
+    .mat-col {
+      min-width: 48px !important;
+      max-width: 60px;
+    }
+    .no-col {
+      width: 28px !important;
+      min-width: 28px;
+    }
+  }
+</style>
+</head>
+<body class="bg-gray-50">
+<div class="max-w-6xl mx-auto p-4 md:p-6">
+
+  <!-- 헤더 -->
+  <div class="flex items-center justify-between mb-5">
+    <div>
+      <h1 class="text-2xl md:text-3xl font-bold text-teal-700">📋 샘플링 packing data sheet</h1>
+      <p class="text-gray-600 mt-1 text-sm">컴퓨터에서 입력 → QR로 폰에 전송 → Import로 사용</p>
+    </div>
+    <div class="text-right text-xs text-gray-500 hidden sm:block">
+      <div>Android 최적화</div>
+      <div class="text-emerald-600 font-medium">보안 안전</div>
+    </div>
+  </div>
+
+  <!-- 안내 -->
+  <div class="bg-white border border-gray-200 rounded-2xl p-4 mb-5 shadow-sm">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+      <div class="flex gap-3">
+        <div class="w-7 h-7 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-sm">1</div>
+        <div><span class="font-semibold">엑셀 업로드</span><br><span class="text-gray-500 text-xs">A열=자재번호, B열=배치번호</span></div>
+      </div>
+      <div class="flex gap-3">
+        <div class="w-7 h-7 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-sm">2</div>
+        <div><span class="font-semibold">QR 내보내기</span><br><span class="text-gray-500 text-xs">자재번호 + 배치번호</span></div>
+      </div>
+      <div class="flex gap-3">
+        <div class="w-7 h-7 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-sm">3</div>
+        <div><span class="font-semibold">폰</span>에서 Import</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 테이블 -->
+  <div class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden mb-5">
+    <div class="px-4 py-3 border-b flex items-center justify-between bg-gray-50">
+      <div class="font-semibold text-base">데이터 입력 (100줄)</div>
+      <div class="flex gap-2">
+        <button onclick="saveToLocal()" class="px-3 py-1.5 bg-white border border-gray-300 hover:bg-gray-50 text-xs font-medium rounded-lg transition">💾 저장</button>
+        <button onclick="loadFromLocal()" class="px-3 py-1.5 bg-white border border-gray-300 hover:bg-gray-50 text-xs font-medium rounded-lg transition">📂 불러오기</button>
+        <button onclick="clearAll()" class="px-3 py-1.5 bg-white border border-red-200 hover:bg-red-50 text-red-600 text-xs font-medium rounded-lg transition">초기화</button>
+      </div>
+    </div>
+
+    <div class="overflow-auto max-h-[55vh]">
+      <table class="w-full text-sm">
+        <thead class="sticky-header bg-white">
+          <tr class="text-left text-gray-600">
+            <th class="no-col w-6 px-1 py-2.5 font-medium text-center">No.</th>
+            <th class="mat-col min-w-[50px] px-1.5 py-2.5 font-medium">자재번호</th>
+            <th class="batch-col min-w-[130px] px-2 py-2.5 font-medium">배치번호</th>
+            <th class="w-16 px-1 py-2.5 text-center font-medium">1번 packing</th>
+            <th class="w-16 px-1 py-2.5 text-right font-medium">packing No</th>
+          </tr>
+        </thead>
+        <tbody id="data-tbody" class="divide-y"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 버튼 -->
+  <div class="flex flex-wrap gap-3 mb-5">
+    <button onclick="uploadExcelFile()" 
+            class="px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-2xl transition flex items-center gap-2 text-sm">
+      📄 엑셀 업로드
+    </button>
+
+    <button onclick="generateQRCode()" 
+            class="flex-1 min-w-[160px] px-5 py-3 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold rounded-2xl shadow-sm transition flex items-center justify-center gap-2 text-sm">
+      📱 QR 코드로 내보내기
+    </button>
+    
+    <button onclick="downloadCSV()" 
+            class="px-5 py-3 bg-white border border-gray-300 hover:bg-gray-50 font-medium rounded-2xl transition flex items-center gap-2 text-sm">
+      📄 CSV 다운로드
+    </button>
+  </div>
+
+  <!-- Import -->
+  <div class="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm">
+    <div class="font-semibold mb-2 text-sm">📥 폰에서 QR 스캔 후 여기 붙여넣기</div>
+    <textarea id="import-textarea" rows="3" placeholder="QR 스캔 결과 붙여넣기" 
+              class="w-full border border-gray-300 rounded-xl p-3 text-sm font-mono focus:outline-none focus:border-emerald-400"></textarea>
+    <button onclick="importFromText()" 
+            class="mt-3 w-full sm:w-auto px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl transition text-sm">
+      데이터 가져오기 (Import)
+    </button>
+  </div>
+
+</div>
+
+<input type="file" id="excel-upload" accept=".xlsx,.xls,.csv" class="hidden" onchange="handleExcelUpload(event)">
+
+<!-- QR 모달 -->
+<div id="qr-modal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+  <div class="bg-white rounded-3xl max-w-md w-full p-5 shadow-xl">
+    <div class="flex justify-between items-center mb-3">
+      <div class="font-bold text-lg">폰으로 스캔하세요</div>
+      <button onclick="closeQRModal()" class="text-2xl text-gray-400 hover:text-gray-600">×</button>
+    </div>
+    
+    <div id="qr-container" class="flex justify-center p-3 bg-white rounded-2xl border"></div>
+    
+    <div class="mt-3 text-sm text-center text-gray-600">
+      1. 폰 카메라로 QR 스캔<br>
+      2. 텍스트를 <span class="font-semibold">전체 복사</span><br>
+      3. 아래 Import에 붙여넣기
+    </div>
+    
+    <div class="flex gap-3 mt-4">
+      <button onclick="downloadQRImage()" class="flex-1 py-2.5 border border-gray-300 hover:bg-gray-50 font-medium rounded-xl transition text-sm">QR 이미지 저장</button>
+      <button onclick="closeQRModal()" class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl transition text-sm">닫기</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function initTailwind() {
+  document.documentElement.style.setProperty('--accent', '#10b981');
+}
+
+function generateTable() {
+  const tbody = document.getElementById('data-tbody');
+  tbody.innerHTML = '';
+  for (let i = 1; i <= 100; i++) {
+    const row = document.createElement('tr');
+    row.className = 'hover:bg-gray-50 transition';
+    row.innerHTML = `
+      <td class="no-col px-1 py-2 text-center font-mono text-gray-500 text-xs">${i}</td>
+      <td class="mat-col px-1 py-1.5">
+        <input type="text" id="mat-${i}" placeholder="자재" 
+               class="w-full border border-gray-200 focus:border-emerald-400 rounded-lg px-1.5 py-1 text-xs outline-none">
+      </td>
+      <td class="batch-col px-1.5 py-1.5">
+        <input type="text" id="batch-${i}" placeholder="배치번호" 
+               class="w-full border border-gray-200 focus:border-emerald-400 rounded-lg px-2 py-1 text-xs outline-none">
+      </td>
+      <td class="px-1 py-2 text-center">
+        <input type="checkbox" id="check-${i}" class="w-4 h-4 accent-emerald-600 cursor-pointer">
+      </td>
+      <td class="px-1 py-1.5">
+        <input type="number" id="num-${i}" value="0" 
+               class="w-full border border-gray-200 focus:border-emerald-400 rounded-lg px-1 py-1 text-xs text-right outline-none">
+      </td>
+    `;
+    tbody.appendChild(row);
+  }
+}
+
+// 엑셀 업로드
+function uploadExcelFile() {
+  document.getElementById('excel-upload').click();
+}
+
+function handleExcelUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      const data = new Uint8Array(ev.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const firstSheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheetName];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+
+      if (jsonData.length === 0) {
+        alert('엑셀 파일에 데이터가 없습니다.');
+        return;
+      }
+
+      const parsed = [];
+      jsonData.forEach((row, idx) => {
+        if (idx === 0) {
+          const firstCell = String(row[0] || '').toLowerCase();
+          if (firstCell.includes('자재') || firstCell.includes('mat') || firstCell === 'no' || firstCell === '번호') {
+            return;
+          }
+        }
+        const mat = String(row[0] || '').trim();
+        const batch = String(row[1] || '').trim();
+        if (mat || batch) {
+          parsed.push([mat, batch]);
+        }
+      });
+
+      if (parsed.length === 0) {
+        alert('인식된 데이터가 없습니다.\nA열=자재번호, B열=배치번호로 입력되어 있는지 확인해주세요.');
+        return;
+      }
+
+      importData(parsed);
+      alert(parsed.length + '개 행을 엑셀에서 불러왔습니다!');
+    } catch (err) {
+      alert('엑셀 파일을 읽는 중 오류가 발생했습니다.');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+  e.target.value = '';
+}
+
+// QR 내보내기 (최적화 버전)
+function generateQRCode() {
+  const pairs = [];
+  for (let i = 1; i <= 100; i++) {
+    const mat = document.getElementById(`mat-${i}`).value.trim();
+    const batch = document.getElementById(`batch-${i}`).value.trim();
+    if (mat || batch) {
+      pairs.push(mat + "," + batch);
+    }
+  }
+
+  if (pairs.length === 0) {
+    alert('입력된 데이터가 없습니다.');
+    return;
+  }
+
+  const textStr = pairs.join("|");
+
+  if (textStr.length > 2800) {
+    alert('데이터가 너무 많아서 QR 생성에 실패할 수 있습니다.\n(' + pairs.length + '개 항목)\n\n항목 수를 줄이거나 글자를 짧게 해주세요.');
+    return;
+  }
+
+  const modal = document.getElementById('qr-modal');
+  const container = document.getElementById('qr-container');
+  container.innerHTML = '';
+
+  try {
+    new QRCode(container, {
+      text: textStr,
+      width: 256,
+      height: 256,
+      colorDark: "#111827",
+      colorLight: "#ffffff",
+      correctLevel: QRCode.CorrectLevel.L
+    });
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  } catch(e) {
+    alert('QR 생성에 실패했습니다.\n데이터가 너무 많습니다. 항목 수를 줄여주세요.');
+  }
+}
+
+function closeQRModal() {
+  const modal = document.getElementById('qr-modal');
+  modal.classList.remove('flex');
+  modal.classList.add('hidden');
+}
+
+function downloadQRImage() {
+  const canvas = document.querySelector('#qr-container canvas');
+  if (canvas) {
+    const link = document.createElement('a');
+    link.download = 'packing-qr.png';
+    link.href = canvas.toDataURL();
+    link.click();
+  }
+}
+
+// 데이터 가져오기
+function importData(data) {
+  if (typeof data === 'string') {
+    data = data.trim();
+
+    if (data.includes('|')) {
+      data = data.split('|').map(item => {
+        const parts = item.split(',');
+        return [parts[0] || '', parts[1] || ''];
+      });
+    }
+    else if (data.includes('\n')) {
+      data = data.split('\n').filter(l => l.trim()).map(line => {
+        const parts = line.split(',');
+        return [parts[0] || '', parts[1] || ''];
+      });
+    }
+    else if (data.startsWith('[')) {
+      try {
+        data = JSON.parse(data);
+      } catch(e) {
+        alert('데이터 형식을 인식할 수 없습니다.');
+        return;
+      }
+    }
+    else {
+      const parts = data.split(',');
+      data = [[parts[0] || '', parts[1] || '']];
+    }
+  }
+
+  if (!Array.isArray(data) || data.length === 0) {
+    alert('불러올 데이터가 없습니다.');
+    return;
+  }
+
+  for (let i = 0; i < Math.min(100, data.length); i++) {
+    let mat = '', batch = '';
+    
+    if (Array.isArray(data[i])) {
+      mat = data[i][0] || '';
+      batch = data[i][1] || '';
+    } else {
+      mat = String(data[i] || '');
+    }
+
+    const matInput = document.getElementById(`mat-${i + 1}`);
+    const batchInput = document.getElementById(`batch-${i + 1}`);
+    if (matInput) matInput.value = mat;
+    if (batchInput) batchInput.value = batch;
+  }
+  
+  alert(data.length + '개 행을 불러왔습니다!');
+}
+
+function saveToLocal() {
+  const data = [];
+  for (let i = 1; i <= 100; i++) {
+    data.push([
+      document.getElementById(`mat-${i}`).value.trim(),
+      document.getElementById(`batch-${i}`).value.trim(),
+      document.getElementById(`check-${i}`).checked ? 1 : 0,
+      parseFloat(document.getElementById(`num-${i}`).value) || 0
+    ]);
+  }
+  localStorage.setItem('companyDataBoard_v1', JSON.stringify(data));
+  alert('저장되었습니다.');
+}
+
+function loadFromLocal() {
+  const saved = localStorage.getItem('companyDataBoard_v1');
+  if (!saved) return alert('저장된 데이터가 없습니다.');
+  try {
+    importData(JSON.parse(saved));
+  } catch(e) {
+    alert('불러오기에 실패했습니다.');
+  }
+}
+
+function clearAll() {
+  if (!confirm('초기화할까요?')) return;
+  for (let i = 1; i <= 100; i++) {
+    document.getElementById(`mat-${i}`).value = '';
+    document.getElementById(`batch-${i}`).value = '';
+    document.getElementById(`check-${i}`).checked = false;
+    document.getElementById(`num-${i}`).value = 0;
+  }
+}
+
+function downloadCSV() {
+  let csv = 'No,자재번호,배치번호,1번 packing,packing No\n';
+  
+  for (let i = 1; i <= 100; i++) {
+    const mat = document.getElementById(`mat-${i}`).value.trim();
+    const batch = document.getElementById(`batch-${i}`).value.trim();
+    const checked = document.getElementById(`check-${i}`).checked ? 1 : 0;
+    const num = document.getElementById(`num-${i}`).value || 0;
+    
+    const safeMat = (mat || '').replace(/"/g, '""');
+    const safeBatch = (batch || '').replace(/"/g, '""');
+    csv += `${i},"${safeMat}","${safeBatch}",${checked},${num}\n`;
+  }
+
+  const bom = '\uFEFF';
+  const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
+  
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = 'packing_data.csv';
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
+function importFromText() {
+  const text = document.getElementById('import-textarea').value.trim();
+  if (!text) return alert('내용이 없습니다.');
+  
+  importData(text);
+  document.getElementById('import-textarea').value = '';
+}
+
+function init() {
+  initTailwind();
+  generateTable();
+
+  const saved = localStorage.getItem('companyDataBoard_v1');
+  if (saved) {
+    try { importData(JSON.parse(saved)); } catch(e) {}
+  }
+
+  let timer;
+  document.getElementById('data-tbody').addEventListener('input', () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      const d = [];
+      for (let i = 1; i <= 100; i++) {
+        d.push([
+          document.getElementById(`mat-${i}`).value.trim(),
+          document.getElementById(`batch-${i}`).value.trim(),
+          document.getElementById(`check-${i}`).checked ? 1 : 0,
+          parseFloat(document.getElementById(`num-${i}`).value) || 0
+        ]);
+      }
+      localStorage.setItem('companyDataBoard_v1', JSON.stringify(d));
+    }, 600);
+  });
+}
+
+window.onload = init;
+</script>
+</body>
+</html>
